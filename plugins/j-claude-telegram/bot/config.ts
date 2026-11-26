@@ -25,10 +25,18 @@ export type Config = {
   infoTopicName: string;
   /** How often to look for topics deleted in Telegram (their Claude, history and files are removed). 0 = never. */
   topicSweepMinutes: number;
+  /** Seconds after start before the first deleted-topic check (tests use a short one). */
+  topicSweepStartSeconds: number;
   /** Files sent to the bot are deleted after this many days (0 = keep). */
   inboxKeepDays: number;
   /** Notify in Info when the 5-hour or weekly plan usage passes this share (0 = never). */
   limitWarnAt: number;
+  /** Telegram Bot API address; only changed for tests against a fake server. */
+  telegramApiRoot: string;
+  /** Show the tool steps (commands, file paths) in the "working…" message. */
+  showSteps: boolean;
+  /** Messages that may wait per topic; more are refused with a short note. */
+  maxWaiting: number;
   editEveryMs: number;
   newTopicGraceMs: number;
   heartbeatSeconds: number;
@@ -49,8 +57,12 @@ const DEFAULTS: Config = {
   workDir: homedir(),
   infoTopicName: "📣 Info",
   topicSweepMinutes: 15,
+  topicSweepStartSeconds: 60,
   inboxKeepDays: 30,
   limitWarnAt: 0.9,
+  telegramApiRoot: "https://api.telegram.org",
+  showSteps: true,
+  maxWaiting: 20,
   // the server's own zone until /timezone sets another
   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
   editEveryMs: 3000,
@@ -66,5 +78,9 @@ export async function loadConfig(dir: string): Promise<Config> {
     return { ...DEFAULTS };
   }
   const raw = JSON.parse(await readFile(path, "utf8")) as Partial<Config>;
-  return { ...DEFAULTS, ...raw };
+  const merged = { ...DEFAULTS, ...raw };
+  // goes into Claude's system prompt: one short line only
+  const name = String(merged.ownerName ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 40);
+  merged.ownerName = name || DEFAULTS.ownerName;
+  return merged;
 }

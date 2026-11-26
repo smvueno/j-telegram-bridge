@@ -52,6 +52,8 @@ fi
 
 # --- where things go -----------------------------------------------------------------------
 if [[ $EUID -eq 0 ]]; then
+  say "Note: installing as root. Anyone you pair can then make Claude do anything root can."
+  say "      A dedicated non-root user with its own workDir is safer (see SECURITY.md)."
   BIN_DIR=/usr/local/bin
   UNIT_DIR=/etc/systemd/system
   SCTL=(systemctl)
@@ -68,6 +70,8 @@ PATH_LINE="$(dirname "$CLAUDE"):$(dirname "$BUN"):/usr/local/sbin:/usr/local/bin
 # command: j-claude-telegram notify|allow
 cat > "$BIN_DIR/$NAME" <<SH
 #!/bin/sh
+# always the bot's own private folder, whoever runs this
+J_CLAUDE_TELEGRAM_HOME="$STATE" export J_CLAUDE_TELEGRAM_HOME
 cd "$APP" && exec "$BUN" cli.ts "\$@"
 SH
 chmod 755 "$BIN_DIR/$NAME"

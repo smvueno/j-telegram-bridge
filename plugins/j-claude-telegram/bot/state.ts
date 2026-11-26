@@ -1,5 +1,7 @@
 import {
   chmodSync,
+  rmSync,
+  statSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -11,6 +13,7 @@ import { randomInt } from "node:crypto";
 
 const PAIR_ALPHABET = "abcdefghijkmnopqrstuvwxyz";
 const PAIR_EXPIRY_MS = 60 * 60 * 1000;
+const MAX_PENDING = 200;
 
 type PendingEntry = { userId: number; at: number };
 
@@ -60,6 +63,48 @@ export class State {
     this.loadSync();
   }
 
+  private lockDepth = 0;
+
+  /**
+   * Runs a read-change-write under a lock file, so the bot and the j-claude-telegram command
+   * never overwrite each other's changes. Re-entrant; a lock older than 5 s is taken as stale.
+   */
+  private withLock<T>(fn: () => T): T {
+    if (this.lockDepth > 0) {
+      this.lockDepth++;
+      try {
+        return fn();
+      } finally {
+        this.lockDepth--;
+      }
+    }
+    const lock = `${this.file}.lock`;
+    mkdirSync(dirname(this.file), { recursive: true, mode: 0o700 });
+    const deadline = Date.now() + 3000;
+    for (;;) {
+      try {
+        mkdirSync(lock);
+        break;
+      } catch {
+        try {
+          if (Date.now() - statSync(lock).mtimeMs > 5000) rmSync(lock, { recursive: true, force: true });
+        } catch {
+          /* gone meanwhile */
+        }
+        if (Date.now() > deadline) break; // never hang: go ahead without it
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+      }
+    }
+    this.lockDepth = 1;
+    try {
+      this.loadSync();
+      return fn();
+    } finally {
+      this.lockDepth = 0;
+      rmSync(lock, { recursive: true, force: true });
+    }
+  }
+
   private loadSync(): void {
     if (!existsSync(this.file)) {
       this.data = emptyState();
@@ -92,9 +137,7 @@ export class State {
         changed = true;
       }
     }
-    if (changed) {
-      this.persist();
-    }
+    void changed; // saved with the next write (which holds the lock)
   }
 
   isAllowed(userId: number): boolean {
@@ -103,37 +146,45 @@ export class State {
   }
 
   newPairCode(userId: number): string {
-    this.loadSync(); // another process (the allow command) may have changed the file
-    let code: string;
-    do {
-      code = "";
-      for (let i = 0; i < 6; i++) {
-        code += PAIR_ALPHABET[randomInt(PAIR_ALPHABET.length)];
-      }
-    } while (this.data.pending[code]);
-
-    this.data.pending[code] = { userId, at: Date.now() };
-    this.persist();
-    return code;
+    return this.withLock(() => {
+      this.loadSync(); // another process (the allow command) may have changed the file
+      // one live code per person, and never more than MAX_PENDING waiting in total
+      for (const [c, e] of Object.entries(this.data.pending)) if (e.userId === userId) delete this.data.pending[c];
+      const waiting = Object.entries(this.data.pending).sort((a, b) => a[1].at - b[1].at);
+      while (waiting.length >= MAX_PENDING) delete this.data.pending[waiting.shift()![0]];
+      let code: string;
+      do {
+        code = "";
+        for (let i = 0; i < 6; i++) {
+          code += PAIR_ALPHABET[randomInt(PAIR_ALPHABET.length)];
+        }
+      } while (this.data.pending[code]);
+  
+      this.data.pending[code] = { userId, at: Date.now() };
+      this.persist();
+      return code;
+    });
   }
 
   allow(code: string): number | null {
-    this.loadSync(); // another process (the allow command) may have changed the file
-    const entry = this.data.pending[code];
-    if (!entry) {
-      return null;
-    }
-    if (Date.now() - entry.at > PAIR_EXPIRY_MS) {
+    return this.withLock(() => {
+      this.loadSync(); // another process (the allow command) may have changed the file
+      const entry = this.data.pending[code];
+      if (!entry) {
+        return null;
+      }
+      if (Date.now() - entry.at > PAIR_EXPIRY_MS) {
+        delete this.data.pending[code];
+        this.persist();
+        return null;
+      }
       delete this.data.pending[code];
+      if (!this.data.allowed.includes(entry.userId)) {
+        this.data.allowed.push(entry.userId);
+      }
       this.persist();
-      return null;
-    }
-    delete this.data.pending[code];
-    if (!this.data.allowed.includes(entry.userId)) {
-      this.data.allowed.push(entry.userId);
-    }
-    this.persist();
-    return entry.userId;
+      return entry.userId;
+    });
   }
 
   sessionFor(key: string): string | undefined {
@@ -142,9 +193,11 @@ export class State {
   }
 
   setSession(key: string, id: string): void {
-    this.loadSync(); // another process (the allow command) may have changed the file
-    this.data.sessions[key] = id;
-    this.persist();
+    return this.withLock(() => {
+      this.loadSync(); // another process (the allow command) may have changed the file
+      this.data.sessions[key] = id;
+      this.persist();
+    });
   }
 
   modelFor(key: string): string | undefined {
@@ -153,9 +206,11 @@ export class State {
   }
 
   setModel(key: string, model: string): void {
-    this.loadSync();
-    this.data.models[key] = model;
-    this.persist();
+    return this.withLock(() => {
+      this.loadSync();
+      this.data.models[key] = model;
+      this.persist();
+    });
   }
 
   effortFor(key: string): string | undefined {
@@ -164,9 +219,11 @@ export class State {
   }
 
   setEffort(key: string, level: string): void {
-    this.loadSync();
-    this.data.efforts[key] = level;
-    this.persist();
+    return this.withLock(() => {
+      this.loadSync();
+      this.data.efforts[key] = level;
+      this.persist();
+    });
   }
 
   modelIdFor(alias: string): string | undefined {
@@ -175,10 +232,12 @@ export class State {
   }
 
   noteModelId(alias: string, id: string): void {
-    this.loadSync();
-    if (this.data.modelIds[alias] === id) return;
-    this.data.modelIds[alias] = id;
-    this.persist();
+    return this.withLock(() => {
+      this.loadSync();
+      if (this.data.modelIds[alias] === id) return;
+      this.data.modelIds[alias] = id;
+      this.persist();
+    });
   }
 
   planUsage(): unknown {
@@ -187,9 +246,11 @@ export class State {
   }
 
   setPlanUsage(u: unknown): void {
-    this.loadSync();
-    this.data.planUsage = u;
-    this.persist();
+    return this.withLock(() => {
+      this.loadSync();
+      this.data.planUsage = u;
+      this.persist();
+    });
   }
 
   timeZone(): string | undefined {
@@ -198,9 +259,26 @@ export class State {
   }
 
   setTimeZone(zone: string): void {
+    return this.withLock(() => {
+      this.loadSync();
+      this.data.timeZone = zone;
+      this.persist();
+    });
+  }
+
+  /** Removes a person from the allow list; true when they were on it. */
+  disallow(userId: number): boolean {
+    return this.withLock(() => {
+      const before = this.data.allowed.length;
+      this.data.allowed = this.data.allowed.filter((u) => u !== userId);
+      this.persist();
+      return this.data.allowed.length < before;
+    });
+  }
+
+  pendingCount(): number {
     this.loadSync();
-    this.data.timeZone = zone;
-    this.persist();
+    return Object.keys(this.data.pending).length;
   }
 
   allowedUsers(): number[] {
@@ -214,15 +292,19 @@ export class State {
   }
 
   setInfoThread(userId: number, threadId: number): void {
-    this.loadSync();
-    this.data.infoThreads[String(userId)] = threadId;
-    this.persist();
+    return this.withLock(() => {
+      this.loadSync();
+      this.data.infoThreads[String(userId)] = threadId;
+      this.persist();
+    });
   }
 
   clearInfoThread(userId: number): void {
-    this.loadSync();
-    delete this.data.infoThreads[String(userId)];
-    this.persist();
+    return this.withLock(() => {
+      this.loadSync();
+      delete this.data.infoThreads[String(userId)];
+      this.persist();
+    });
   }
 
   topicName(key: string): { name: string; sure: boolean } | undefined {
@@ -232,12 +314,14 @@ export class State {
 
   /** A guessed name (sure=false) never replaces a sure one. */
   noteTopicName(key: string, name: string, sure: boolean): void {
-    this.loadSync();
-    const cur = this.data.topicNames[key];
-    if (cur && cur.sure && !sure) return;
-    if (cur && cur.name === name && cur.sure === sure) return;
-    this.data.topicNames[key] = { name, sure };
-    this.persist();
+    return this.withLock(() => {
+      this.loadSync();
+      const cur = this.data.topicNames[key];
+      if (cur && cur.sure && !sure) return;
+      if (cur && cur.name === name && cur.sure === sure) return;
+      this.data.topicNames[key] = { name, sure };
+      this.persist();
+    });
   }
 
   /** Every topic key the bot knows something about. */
@@ -248,14 +332,16 @@ export class State {
 
   /** Drops everything about a deleted topic; returns its conversation id, if any. */
   forgetTopic(key: string): string | undefined {
-    this.loadSync();
-    const id = this.data.sessions[key];
-    delete this.data.sessions[key];
-    delete this.data.models[key];
-    delete this.data.efforts[key];
-    delete this.data.topicNames[key];
-    this.persist();
-    return id;
+    return this.withLock(() => {
+      this.loadSync();
+      const id = this.data.sessions[key];
+      delete this.data.sessions[key];
+      delete this.data.models[key];
+      delete this.data.efforts[key];
+      delete this.data.topicNames[key];
+      this.persist();
+      return id;
+    });
   }
 
   limitWarned(): { fiveHour?: string; week?: string } {
@@ -264,22 +350,28 @@ export class State {
   }
 
   setLimitWarned(w: { fiveHour?: string; week?: string }): void {
-    this.loadSync();
-    this.data.limitWarned = w;
-    this.persist();
+    return this.withLock(() => {
+      this.loadSync();
+      this.data.limitWarned = w;
+      this.persist();
+    });
   }
 
   setWorking(key: string, chatId: number, messageId: number): void {
-    this.loadSync();
-    this.data.working[key] = { chatId, messageId };
-    this.persist();
+    return this.withLock(() => {
+      this.loadSync();
+      this.data.working[key] = { chatId, messageId };
+      this.persist();
+    });
   }
 
   clearWorking(key: string): void {
-    this.loadSync();
-    if (!this.data.working[key]) return;
-    delete this.data.working[key];
-    this.persist();
+    return this.withLock(() => {
+      this.loadSync();
+      if (!this.data.working[key]) return;
+      delete this.data.working[key];
+      this.persist();
+    });
   }
 
   /** Takes all recorded "working…" messages (used once at start). */
@@ -292,9 +384,11 @@ export class State {
   }
 
   clearSession(key: string): void {
-    this.loadSync(); // another process (the allow command) may have changed the file
-    delete this.data.sessions[key];
-    this.persist();
+    return this.withLock(() => {
+      this.loadSync(); // another process (the allow command) may have changed the file
+      delete this.data.sessions[key];
+      this.persist();
+    });
   }
 
   private persist(): void {

@@ -107,6 +107,8 @@ service after changing it.
 | `timeoutMinutes` | `30` | Longest a single reply may take |
 | `timeZone` | the server's | Times in `/status` (also `/timezone`) |
 | `infoTopicName` | `📣 Info` | Name of the notifications topic |
+| `showSteps` | `true` | Show commands and paths in the "working…" message |
+| `maxWaiting` | `20` | Messages that may wait per topic |
 | `topicSweepMinutes` | `15` | How often to look for deleted topics (0 = never) |
 | `inboxKeepDays` | `30` | Delete files sent to the bot after this many days (0 = keep) |
 | `limitWarnAt` | `0.9` | Notify when plan usage passes this share (0 = never) |

@@ -8,6 +8,8 @@ that runs the service, in auto permission mode**. Please read this before you in
 - Only Telegram accounts on the allow list get any answer. Everyone else gets one line with a
   pairing code (at most once per 10 minutes) and nothing more.
 - A code does nothing until someone with access to the server runs `j-claude-telegram allow <code>`.
+  Everyone already paired gets an 🚨 notification when that happens. See who is paired with
+  `j-claude-telegram list`; remove someone with `j-claude-telegram disallow <id>`.
   **Never approve a code that someone sent you.** It gives that account the same power as you.
 - The allow list holds numeric Telegram user ids, not usernames, so a changed or copied
   username does not get in.
@@ -24,6 +26,11 @@ shell as that Linux user. To limit the damage:
 - Run the bot as a dedicated non-root user that owns only what Claude should touch.
 - Set `workDir` to the folder Claude should work in.
 - Keep the allow list to yourself.
+- `showSteps: false` in config.json hides the commands and paths shown while Claude works.
+- Files Claude names with `SEND_FILE:` are never sent from private folders (the bot's own,
+  `~/.ssh`, cloud and GitHub logins) or when they look like secrets (`.env`, keys).
+- Quoted notifications and forwarded messages are labelled as information, not instructions.
+  This lowers the risk from outside text, but no label fully stops prompt injection.
 
 ## The bot token
 
@@ -50,6 +57,10 @@ Everything private lives in `~/.claude/channels/j-claude-telegram/` (or `J_CLAUD
 (files sent to the bot). None of it is in the repository, and `.gitignore` blocks those names
 as an extra guard. Files in `inbox/` are deleted after `inboxKeepDays` (30) and when their topic
 is deleted or cleared with `/new`.
+
+## Audit
+
+See [docs/SECURITY-AUDIT.md](docs/SECURITY-AUDIT.md) for the latest audit and break test.
 
 ## Reporting a problem
 

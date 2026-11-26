@@ -10,7 +10,9 @@ import { loadToken } from "./token";
 const USAGE = `j-claude-telegram: helper for the J Claude Telegram bot
 
   j-claude-telegram notify [options] [message]   push a notification (see: notify --help)
-  j-claude-telegram allow <code>                 let the person who got this pairing code use the bot`;
+  j-claude-telegram allow <code>                 let the person who got this pairing code use the bot
+  j-claude-telegram list                         who may use the bot
+  j-claude-telegram disallow <user id>           take someone off the list`;
 
 async function main(argv: string[]): Promise<number> {
   const [sub, ...rest] = argv;
@@ -21,9 +23,47 @@ async function main(argv: string[]): Promise<number> {
       console.error("Usage: j-claude-telegram allow <code>");
       return 2;
     }
-    const userId = new State(STATE_FILE).allow(code);
-    console.log(userId !== null ? `Allowed user ${userId}` : "No such code");
-    return userId !== null ? 0 : 1;
+    const state = new State(STATE_FILE);
+    const before = state.allowedUsers();
+    const userId = state.allow(code);
+    if (userId === null) {
+      console.log("No such code");
+      return 1;
+    }
+    console.log(`Allowed user ${userId}`);
+    // tell everyone already paired, so a pairing nobody expected is noticed at once
+    if (before.length > 0 && !before.includes(userId)) {
+      const config = await loadConfig(STATE_DIR);
+      const api = new Api(await loadToken(), { apiRoot: config.telegramApiRoot });
+      const others = new State(STATE_FILE);
+      await sendNotification(api, others, {
+        topicName: config.infoTopicName,
+        level: "alert",
+        title: "Someone new can use the bot",
+        body: `Telegram user ${userId} was just paired on the server. If that was not you: j-claude-telegram disallow ${userId}`,
+      }).catch(() => {});
+    }
+    return 0;
+  }
+
+  if (sub === "list") {
+    const state = new State(STATE_FILE);
+    const users = state.allowedUsers();
+    console.log(users.length ? users.map((u) => `${u}`).join("\n") : "Nobody is paired.");
+    const waiting = state.pendingCount();
+    if (waiting) console.log(`(${waiting} pairing code${waiting === 1 ? "" : "s"} waiting)`);
+    return 0;
+  }
+
+  if (sub === "disallow") {
+    const id = Number(rest[0]);
+    if (!Number.isInteger(id) || id <= 0) {
+      console.error("Usage: j-claude-telegram disallow <user id>   (see: j-claude-telegram list)");
+      return 2;
+    }
+    const removed = new State(STATE_FILE).disallow(id);
+    console.log(removed ? `Removed user ${id}. Restart the bot to close their open Claudes.` : `User ${id} was not on the list.`);
+    return removed ? 0 : 1;
   }
 
   if (sub === "notify") {
@@ -45,7 +85,12 @@ async function main(argv: string[]): Promise<number> {
         console.error("No message. Give it after the options, or pipe it in.");
         return 2;
       }
-      body = (await Bun.stdin.text()).trim();
+      const raw = await Bun.stdin.text();
+      if (raw.length > 100_000) {
+        console.error("Message too long (over 100 000 characters). Send the important part, or attach a file with -f.");
+        return 2;
+      }
+      body = raw.trim();
     }
     if (!body && !args.title) {
       console.error("Empty message.");
@@ -58,7 +103,7 @@ async function main(argv: string[]): Promise<number> {
       }
     }
     const config = await loadConfig(STATE_DIR);
-    const api = new Api(await loadToken());
+    const api = new Api(await loadToken(), { apiRoot: config.telegramApiRoot });
     const res = await sendNotification(api, new State(STATE_FILE), {
       topicName: config.infoTopicName,
       title: args.title,

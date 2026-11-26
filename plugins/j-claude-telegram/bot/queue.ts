@@ -12,14 +12,17 @@ export class TopicQueue {
     this.maxParallel = maxParallel;
   }
 
-  push(key: string, job: () => Promise<void>): void {
+  /** Queues a job; false (and nothing queued) when maxWaiting jobs already wait for this key. */
+  push(key: string, job: () => Promise<void>, maxWaiting = Infinity): boolean {
     let kq = this.keys.get(key);
     if (!kq) {
       kq = { pending: [], running: false };
       this.keys.set(key, kq);
     }
+    if (kq.pending.length >= maxWaiting) return false;
     kq.pending.push(job);
     this.pump();
+    return true;
   }
 
   running(key: string): boolean {
