@@ -23,20 +23,23 @@ else's cloud except Telegram and Claude itself.
   after the notification, and Claude answers there.
 - **A useful `/status`.** Model and thinking, your Claude plan usage (5-hour and weekly, with
   reset times), CPU, memory, disk, and the top 5 processes by CPU and by memory.
+- **Proper formatting.** Bold, code, lists, quotes and links show as Telegram formatting.
 - **Photos and files** you send reach Claude; Claude can send files back.
 - **Cleans up after itself.** Delete a topic in Telegram and, within 15 minutes, its running
   Claude is stopped and its conversation history and files are deleted from the server.
   (Pin 📣 Info yourself: long-press it → Pin. Bots cannot pin topics.)
 - **Locked to you.** Only paired Telegram accounts get anything; groups are ignored.
 - **Keeps itself running.** systemd restarts it on crashes and at boot, and a health check
-  restarts it if it freezes.
+  restarts it if it freezes. A reply cut off by a restart is marked as such, never left hanging.
+- **Warns before your limit.** One notification in 📣 Info when the 5-hour or weekly Claude
+  limit passes 90%, and one when it is reached.
 
 ## Commands in Telegram
 
 | Command | What it does |
 |---|---|
 | `/model` | Pick the model (with its version), then the thinking level |
-| `/new` | Fresh conversation in this topic (keeps its model) |
+| `/new` | Fresh conversation in this topic (deletes the old one; keeps the model) |
 | `/stop` | Stop the reply being written |
 | `/status` | Claude, plan usage, server load, top processes |
 | `/timezone <city>` | Show times in your zone while you travel |
@@ -105,6 +108,8 @@ service after changing it.
 | `timeZone` | the server's | Times in `/status` (also `/timezone`) |
 | `infoTopicName` | `📣 Info` | Name of the notifications topic |
 | `topicSweepMinutes` | `15` | How often to look for deleted topics (0 = never) |
+| `inboxKeepDays` | `30` | Delete files sent to the bot after this many days (0 = keep) |
+| `limitWarnAt` | `0.9` | Notify when plan usage passes this share (0 = never) |
 
 `CLAUDE_TELEGRAM_HOME` moves the whole private folder elsewhere.
 

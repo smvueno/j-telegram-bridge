@@ -7,6 +7,10 @@ import { State } from "./state";
 import { splitMessage, extractSendFiles } from "./text";
 import { TopicTracker, topicNameFor } from "./topics";
 import { deleteConversation, topicInboxDir } from "./history";
+import { markdownToTelegramHtml } from "./format";
+import { limitWarnings } from "./limits";
+import { sendNotification } from "./notify";
+import { readdir, stat } from "node:fs/promises";
 import { rm } from "node:fs/promises";
 import { TopicQueue } from "./queue";
 import { systemNote } from "./prompt";
@@ -113,7 +117,19 @@ async function sendClaudeOutput(
   rawText: string,
 ): Promise<void> {
   const { text, files } = extractSendFiles(rawText);
-  await sendPlain(api, chatId, threadId, text);
+  // formatted (Telegram HTML); a part Telegram refuses goes again as plain text.
+  // Split before converting (3500 leaves room for the tags) so no tag is cut in half.
+  for (const part of splitMessage(text, 3500)) {
+    try {
+      await api.sendMessage(chatId, markdownToTelegramHtml(part), {
+        ...threadExtra(threadId),
+        parse_mode: "HTML",
+      });
+    } catch (e) {
+      if (!(e instanceof GrammyError) || e.error_code !== 400 || /thread|TOPIC_/i.test(e.description)) throw e;
+      await api.sendMessage(chatId, part, threadExtra(threadId));
+    }
+  }
   for (const path of files) {
     try {
       const extra = threadExtra(threadId);
@@ -147,6 +163,25 @@ async function main(): Promise<void> {
     lastUsed: number;
     model: string;
     effort: string;
+  };
+
+  /** One notification in Info when the 5-hour or weekly limit passes limitWarnAt, and when it is hit. */
+  const warnAboutLimits = async (u: PlanUsage): Promise<void> => {
+    const { send, warned } = limitWarnings(u, state.limitWarned(), config.limitWarnAt);
+    if (send.length === 0) return;
+    state.setLimitWarned(warned);
+    for (const w of send) {
+      const which = w.window === "week" ? "this week's" : "the 5-hour";
+      await sendNotification(bot.api, state, {
+        topicName: config.infoTopicName,
+        level: w.level,
+        title: w.level === "alert" ? `Claude limit reached (${which})` : `Claude at ${w.pct}% of ${which} limit`,
+        body:
+          `Resets ${whenLabel(w.resetsAt, Date.now(), zoneOf())}.` +
+          (w.level === "alert" ? " Until then Claude cannot answer." : " Haiku, or Sonnet on Medium thinking, uses the least."),
+      }).catch((e) => logErr(`limit_warn err=${e instanceof Error ? e.message.slice(0, 80) : "?"}`));
+      log(`limit_warn window=${w.window} level=${w.level} pct=${w.pct}`);
+    }
   };
 
   const modelOf = (key: string): string => state.modelFor(key) ?? config.defaultModel;
@@ -195,7 +230,9 @@ async function main(): Promise<void> {
       effort,
       onRateLimit: (ev) => {
         const u = planUsageFrom(ev, Date.now());
-        if (u) state.setPlanUsage(u);
+        if (!u) return;
+        state.setPlanUsage(u);
+        if (config.limitWarnAt > 0) void warnAboutLimits(u);
       },
       onModel: (id) => {
         if (/^[a-z]+$/.test(model)) state.noteModelId(model, id);
@@ -276,7 +313,29 @@ async function main(): Promise<void> {
    * already has changes nothing and adds no message, but fails with TOPIC_ID_INVALID once it is
    * gone. Names come from the topic being made or renamed (sure) or from its first message (guess).
    */
+  /** Deletes files sent to the bot that are older than inboxKeepDays. */
+  const sweepOldInbox = async (): Promise<void> => {
+    if (config.inboxKeepDays <= 0) return;
+    const cutoff = Date.now() - config.inboxKeepDays * 86_400_000;
+    let removed = 0;
+    const walk = async (dir: string): Promise<void> => {
+      for (const name of await readdir(dir).catch(() => [] as string[])) {
+        const p = join(dir, name);
+        const st = await stat(p).catch(() => null);
+        if (!st) continue;
+        if (st.isDirectory()) await walk(p);
+        else if (st.mtimeMs < cutoff) {
+          await rm(p, { force: true }).catch(() => {});
+          removed += 1;
+        }
+      }
+    };
+    await walk(INBOX_DIR);
+    if (removed) log(`inbox_cleanup removed=${removed}`);
+  };
+
   const sweepDeletedTopics = async (): Promise<void> => {
+    await sweepOldInbox();
     for (const key of state.knownTopics()) {
       const { chatId, threadId } = parseKey(key);
       const known = state.topicName(key);
@@ -403,6 +462,7 @@ async function main(): Promise<void> {
         threadExtra(threadId),
       );
       workingMsgId = sent.message_id;
+      state.setWorking(key, chatId, sent.message_id);
 
       let wc = getWarm(key);
       let result = await wc.ask({
@@ -481,6 +541,7 @@ async function main(): Promise<void> {
         /* ignore */
       }
     } finally {
+      state.clearWorking(key);
       clearInterval(typingTimer);
       if (editTimer) clearTimeout(editTimer);
       workingMsgId = undefined;
@@ -782,10 +843,18 @@ async function main(): Promise<void> {
       const ac = abortByKey.get(key);
       if (ac) ac.abort();
       dropPoolEntry(key);
+      const oldSession = state.sessionFor(key);
       state.clearSession(key);
       const dropped = queue.drop(key);
+      // the old conversation and the files sent in this topic go too; wait a moment so the
+      // stopped Claude has finished writing its file
+      setTimeout(() => {
+        const removed = oldSession ? deleteConversation(oldSession) : 0;
+        void rm(topicInboxDir(INBOX_DIR, key), { recursive: true, force: true }).catch(() => {});
+        log(`cmd_new key=${key} history_files=${removed}`);
+      }, 3000);
       await ctx.reply(
-        "New conversation in this topic.",
+        "New conversation in this topic. The old one is deleted.",
         threadExtra(parsedThread),
       );
       log(`cmd_new key=${key} dropped=${dropped}`);
@@ -973,6 +1042,13 @@ async function main(): Promise<void> {
   await bot.start({
     onStart: () => {
       log("polling started");
+      // replies cut off by the last stop or crash: say so instead of "working…" forever
+      for (const w of state.takeWorking()) {
+        void bot.api
+          .editMessageText(w.chatId, w.messageId, "⚠️ Interrupted by a restart. Please send your message again.")
+          .catch(() => {});
+        log(`interrupted key=${w.key}`);
+      }
       if (config.topicSweepMinutes > 0) {
         const sweep = () =>
           void sweepDeletedTopics().catch((e) =>

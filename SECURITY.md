@@ -48,7 +48,8 @@ notification.
 Everything private lives in `~/.claude/channels/telegram-topics/` (or `CLAUDE_TELEGRAM_HOME`):
 `bot.env`, `state.json` (allow list, conversation ids, choices), `config.json`, `inbox/`
 (files sent to the bot). None of it is in the repository, and `.gitignore` blocks those names
-as an extra guard. Files in `inbox/` are not deleted automatically.
+as an extra guard. Files in `inbox/` are deleted after `inboxKeepDays` (30) and when their topic
+is deleted or cleared with `/new`.
 
 ## Reporting a problem
 

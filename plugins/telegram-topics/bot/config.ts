@@ -25,6 +25,10 @@ export type Config = {
   infoTopicName: string;
   /** How often to look for topics deleted in Telegram (their Claude, history and files are removed). 0 = never. */
   topicSweepMinutes: number;
+  /** Files sent to the bot are deleted after this many days (0 = keep). */
+  inboxKeepDays: number;
+  /** Notify in Info when the 5-hour or weekly plan usage passes this share (0 = never). */
+  limitWarnAt: number;
   editEveryMs: number;
   newTopicGraceMs: number;
   heartbeatSeconds: number;
@@ -45,6 +49,8 @@ const DEFAULTS: Config = {
   workDir: homedir(),
   infoTopicName: "📣 Info",
   topicSweepMinutes: 15,
+  inboxKeepDays: 30,
+  limitWarnAt: 0.9,
   // the server's own zone until /timezone sets another
   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
   editEveryMs: 3000,

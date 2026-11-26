@@ -32,6 +32,10 @@ type StateData = {
   infoThreads: Record<string, number>;
   /** topic key -> its name; sure = seen when made or renamed (safe to use for the existence check) */
   topicNames: Record<string, { name: string; sure: boolean }>;
+  /** plan-usage warnings already sent (see limits.ts) */
+  limitWarned?: { fiveHour?: string; week?: string };
+  /** "working…" messages of replies in progress, so a restart can mark them as cut off */
+  working: Record<string, { chatId: number; messageId: number }>;
 };
 
 const emptyState = (): StateData => ({
@@ -43,6 +47,7 @@ const emptyState = (): StateData => ({
   modelIds: {},
   infoThreads: {},
   topicNames: {},
+  working: {},
 });
 
 export class State {
@@ -72,6 +77,8 @@ export class State {
       timeZone: raw.timeZone,
       infoThreads: raw.infoThreads ?? {},
       topicNames: raw.topicNames ?? {},
+      limitWarned: raw.limitWarned,
+      working: raw.working ?? {},
     };
     this.pruneExpiredPending();
   }
@@ -249,6 +256,39 @@ export class State {
     delete this.data.topicNames[key];
     this.persist();
     return id;
+  }
+
+  limitWarned(): { fiveHour?: string; week?: string } {
+    this.loadSync();
+    return this.data.limitWarned ?? {};
+  }
+
+  setLimitWarned(w: { fiveHour?: string; week?: string }): void {
+    this.loadSync();
+    this.data.limitWarned = w;
+    this.persist();
+  }
+
+  setWorking(key: string, chatId: number, messageId: number): void {
+    this.loadSync();
+    this.data.working[key] = { chatId, messageId };
+    this.persist();
+  }
+
+  clearWorking(key: string): void {
+    this.loadSync();
+    if (!this.data.working[key]) return;
+    delete this.data.working[key];
+    this.persist();
+  }
+
+  /** Takes all recorded "working…" messages (used once at start). */
+  takeWorking(): Array<{ key: string; chatId: number; messageId: number }> {
+    this.loadSync();
+    const all = Object.entries(this.data.working).map(([key, w]) => ({ key, ...w }));
+    this.data.working = {};
+    this.persist();
+    return all;
   }
 
   clearSession(key: string): void {
