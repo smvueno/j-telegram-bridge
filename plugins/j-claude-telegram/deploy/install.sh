@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Installs the Claude Telegram topics bot as an always-on systemd service.
+# Installs the J Claude Telegram bot as an always-on systemd service.
 #
-#   bash install.sh             copy the bot to ~/.local/share/claude-telegram-topics and run it from there
+#   bash install.sh             copy the bot to ~/.local/share/j-claude-telegram and run it from there
 #   bash install.sh --in-place  run the bot from this checkout (for development)
 #
 # Root gets a system service (/etc/systemd/system); any other user a user service.
-# The token must already be in $CLAUDE_TELEGRAM_HOME/bot.env (see the telegram-topics-setup skill),
+# The token must already be in $J_CLAUDE_TELEGRAM_HOME/bot.env (see the j-claude-telegram:setup skill),
 # or be given once as TELEGRAM_BOT_TOKEN in the environment.
 set -euo pipefail
 
-NAME=claude-telegram
+NAME=j-claude-telegram
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../bot" && pwd)"
-STATE="${CLAUDE_TELEGRAM_HOME:-$HOME/.claude/channels/telegram-topics}"
+STATE="${J_CLAUDE_TELEGRAM_HOME:-$HOME/.claude/channels/j-claude-telegram}"
 
 say() { printf '%s\n' "$*"; }
 die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
@@ -43,7 +43,7 @@ chmod 600 "$STATE/bot.env"
 if $in_place; then
   APP="$SRC"
 else
-  APP="${CLAUDE_TELEGRAM_APP:-$HOME/.local/share/claude-telegram-topics}"
+  APP="${J_CLAUDE_TELEGRAM_APP:-$HOME/.local/share/j-claude-telegram}"
   mkdir -p "$APP"
   # copy the bot (no node_modules, no tests), keep nothing else there
   ( cd "$SRC" && tar --exclude=node_modules --exclude=tests -cf - . ) | ( cd "$APP" && tar -xf - )
@@ -65,7 +65,7 @@ fi
 mkdir -p "$BIN_DIR" "$UNIT_DIR"
 PATH_LINE="$(dirname "$CLAUDE"):$(dirname "$BUN"):/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-# command: claude-telegram notify|allow
+# command: j-claude-telegram notify|allow
 cat > "$BIN_DIR/$NAME" <<SH
 #!/bin/sh
 cd "$APP" && exec "$BUN" cli.ts "\$@"
@@ -85,7 +85,7 @@ chmod 755 "$BIN_DIR/$NAME-check"
 
 cat > "$UNIT_DIR/$NAME.service" <<UNIT
 [Unit]
-Description=Claude in Telegram topics (each topic is its own Claude conversation)
+Description=J Claude Telegram: Claude Code in Telegram topics (each topic is its own Claude conversation)
 After=network-online.target
 Wants=network-online.target
 
@@ -94,7 +94,7 @@ Type=simple
 WorkingDirectory=$APP
 Environment=HOME=$HOME
 Environment=PATH=$PATH_LINE
-Environment=CLAUDE_TELEGRAM_HOME=$STATE
+Environment=J_CLAUDE_TELEGRAM_HOME=$STATE
 ExecStart=$BUN bot.ts
 Restart=always
 RestartSec=5
@@ -136,4 +136,4 @@ say "Installed. The bot runs from $APP as a ${SCTL[1]:+user }service ($NAME)."
 if [[ $EUID -ne 0 ]] && ! loginctl show-user "$USER" -p Linger 2>/dev/null | grep -q yes; then
   say "To keep it running after you log out (and start at boot): sudo loginctl enable-linger $USER"
 fi
-say "Next: message your bot in Telegram, then run: claude-telegram allow <code>"
+say "Next: message your bot in Telegram, then run: j-claude-telegram allow <code>"

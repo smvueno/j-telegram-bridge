@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "claude-telegram",
+      "name": "j-claude-telegram",
       "dependencies": {
         "grammy": "^1.35.0",
       },

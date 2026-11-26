@@ -1,10 +1,10 @@
 ---
-name: telegram-topics-setup
-description: Install or check the Claude Telegram topics bot on this Linux server, so the user can talk to Claude Code from Telegram (one topic per conversation) and get push notifications. Use when the user asks to set up, install, pair, repair or update the Telegram topics bot, or asks how to use Claude from Telegram with this plugin.
+name: setup
+description: Install or check the J Claude Telegram bot on this Linux server, so the user can talk to Claude Code from Telegram (one topic per conversation) and get push notifications. Use when the user asks to set up, install, pair, repair or update J Claude Telegram (the Telegram bot), or asks how to use Claude from Telegram with this plugin.
 user-invocable: true
 ---
 
-# Set up the Telegram topics bot
+# Set up J Claude Telegram
 
 Work through these steps with the user. Explain each in plain words; never print the bot
 token back, never put it in a command line that ends up in shell history or logs.
@@ -37,7 +37,7 @@ the skill loads).
 Ask the user to paste the token. Write it without echoing it:
 
 ```bash
-STATE="${CLAUDE_TELEGRAM_HOME:-$HOME/.claude/channels/telegram-topics}"
+STATE="${J_CLAUDE_TELEGRAM_HOME:-$HOME/.claude/channels/j-claude-telegram}"
 mkdir -p -m 700 "$STATE"
 ( umask 077; printf 'TELEGRAM_BOT_TOKEN=%s\n' "<token>" > "$STATE/bot.env" )
 ```
@@ -54,23 +54,23 @@ Run the installer from this plugin (as the user who should run the bot; root wor
 bash <plugin>/deploy/install.sh
 ```
 
-It copies the bot to `~/.local/share/claude-telegram-topics`, installs its packages, adds the
-`claude-telegram` command, and starts a systemd service that restarts on crashes and at boot,
+It copies the bot to `~/.local/share/j-claude-telegram`, installs its packages, adds the
+`j-claude-telegram` command, and starts a systemd service that restarts on crashes and at boot,
 plus a 5-minute health check. For a non-root user it uses a user service and asks for
 `loginctl enable-linger <user>` (needs sudo) so it keeps running after logout.
 
-Optional settings (`~/.claude/channels/telegram-topics/config.json`, created on first start):
+Optional settings (`~/.claude/channels/j-claude-telegram/config.json`, created on first start):
 `ownerName` (how Claude calls the user), `workDir` (folder Claude works in, default home),
 `defaultModel` (`sonnet`), `defaultEffort` (`medium`), `maxWarm` (Claudes kept running, 3),
-`idleMinutes` (30), `timeZone`. Restart after changes: `systemctl restart claude-telegram`
+`idleMinutes` (30), `timeZone`. Restart after changes: `systemctl restart j-claude-telegram`
 (add `--user` for a user service).
 
 ## 5. Pair
 
 1. The user sends any message to their bot. It answers with a pairing code.
-2. Run `claude-telegram allow <code>`. Only do this for a code the user got themselves, never
+2. Run `j-claude-telegram allow <code>`. Only do this for a code the user got themselves, never
    for one someone else sent them: it gives that Telegram account full use of Claude on this server.
-3. Test: `claude-telegram notify -l done -t "Setup finished" "Notifications work."`
+3. Test: `j-claude-telegram notify -l done -t "Setup finished" "Notifications work."`
    A **📣 Info** topic appears in their chat with the notification.
 
 ## 6. Tell the user how to use it
@@ -79,4 +79,4 @@ Optional settings (`~/.claude/channels/telegram-topics/config.json`, created on 
   level), `/new`, `/stop`, `/status`, `/timezone`.
 - Claude runs in auto permission mode as the service's user, in `workDir`. Anyone who can use
   the bot can do what that user can do. Keep the pairing list to people they fully trust.
-- Logs: `journalctl -u claude-telegram` (add `--user` for a user service).
+- Logs: `journalctl -u j-claude-telegram` (add `--user` for a user service).

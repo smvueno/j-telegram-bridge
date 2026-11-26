@@ -5,10 +5,10 @@ Telegram ⇄ bot.ts (Bun, grammy, long polling) ── one `claude -p --input-fo
                 │                                    (warm-claude.ts, resumed by conversation id)
                 ├─ state.json   allow list, topic → conversation, model/thinking per topic, plan usage
                 └─ config.json  numbers and choices
-claude-telegram notify ──(Telegram Bot API)──▶ 📣 Info topic   (cli.ts, notify.ts; no polling)
+j-claude-telegram notify ──(Telegram Bot API)──▶ 📣 Info topic   (cli.ts, notify.ts; no polling)
 ```
 
-## Files (`plugins/telegram-topics/bot`)
+## Files (`plugins/j-claude-telegram/bot`)
 
 | File | Job |
 |---|---|
@@ -20,7 +20,7 @@ claude-telegram notify ──(Telegram Bot API)──▶ 📣 Info topic   (cli.
 | `state.ts` | `state.json`, re-read before every use and written atomically (temp file, then rename), so the CLI and the bot never overwrite each other |
 | `config.ts` | Defaults and `config.json` |
 | `models.ts`, `timezone.ts`, `server-status.ts`, `text.ts` | Labels, times, `/status` sections, message splitting and `SEND_FILE:` lines |
-| `notify.ts`, `notify-args.ts`, `cli.ts` | The `claude-telegram` command: `notify` and `allow` |
+| `notify.ts`, `notify-args.ts`, `cli.ts` | The `j-claude-telegram` command: `notify` and `allow` |
 | `history.ts` | Deletes a conversation's files; one inbox folder per topic |
 | `paths.ts`, `token.ts`, `prompt.ts` | Private folder, token, the note added to Claude's system prompt |
 

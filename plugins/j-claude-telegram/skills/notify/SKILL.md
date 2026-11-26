@@ -1,6 +1,6 @@
 ---
-name: telegram-notify
-description: Send a push notification to the owner's phone through the Claude Telegram topics bot (it lands in the "📣 Info" topic). Use when a scheduled or background task finishes or fails, when you need the owner's attention or a decision and they may not be watching, when a long job they started completes, or when the user asks to be notified, pinged, alerted or messaged on Telegram or their phone.
+name: notify
+description: Send a push notification to the owner's phone through the J Claude Telegram bot (it lands in the "📣 Info" topic). Use when a scheduled or background task finishes or fails, when you need the owner's attention or a decision and they may not be watching, when a long job they started completes, or when the user asks to be notified, pinged, alerted or messaged on Telegram or their phone.
 ---
 
 # Telegram notifications
@@ -13,14 +13,14 @@ notification they replied to.
 ## How to send one
 
 ```bash
-claude-telegram notify -l <level> -t "<title>" "<message>"
+j-claude-telegram notify -l <level> -t "<title>" "<message>"
 ```
 
 For anything longer than a line, or with quotes or `$` in it, pipe the message in so the
 shell does not mangle it:
 
 ```bash
-claude-telegram notify -l warn -t "Nightly import failed" - <<'MSG'
+j-claude-telegram notify -l warn -t "Nightly import failed" - <<'MSG'
 The import stopped at step 3 of 5: the API answered 401 (login expired).
 Nothing was changed. To fix: log in again in Settings, then run the import once.
 MSG
@@ -29,7 +29,7 @@ MSG
 Options: `-l info|done|warn|alert` (default info), `-t TITLE`, `-s` (no sound),
 `-f /absolute/path` (attach a file, repeatable; pictures show as photos).
 It prints `Sent to 1 person.` and exits 0 on success. On a non-zero exit, tell the user it
-was not delivered and why (the error is printed). If `claude-telegram` is not found, the
+was not delivered and why (the error is printed). If `j-claude-telegram` is not found, the
 bot is not installed on this machine: say so instead of guessing another way.
 
 ## Pick the level

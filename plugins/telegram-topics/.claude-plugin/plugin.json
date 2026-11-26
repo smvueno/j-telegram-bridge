@@ -1,8 +1,0 @@
-{
-  "name": "telegram-topics",
-  "description": "Claude Code in Telegram topics on your own server, with push notifications. Skills: telegram-notify (send a notification to your phone) and telegram-topics-setup (install the bot).",
-  "version": "1.3.0",
-  "author": { "name": "smvueno" },
-  "license": "MIT",
-  "keywords": ["telegram", "notifications", "push", "remote", "topics", "server"]
-}

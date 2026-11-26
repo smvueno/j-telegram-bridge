@@ -792,7 +792,7 @@ async function main(): Promise<void> {
         pairReplyAt.set(userId, now);
         const threadId = ctx.message.message_thread_id ?? 0;
         await ctx.reply(
-          `Not paired. On the server run: claude-telegram allow ${code}`,
+          `Not paired. On the server run: j-claude-telegram allow ${code}`,
           threadExtra(threadId),
         );
         log(`pair_prompt user=${userId}`);

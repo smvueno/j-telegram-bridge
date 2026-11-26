@@ -1,4 +1,4 @@
-# Claude Telegram Topics
+# J Claude Telegram
 
 Use **Claude Code on your own Linux server from Telegram**. Every topic in your private chat
 with the bot is its own Claude conversation, and a **📣 Info** topic gets push notifications
@@ -17,7 +17,7 @@ else's cloud except Telegram and Claude itself.
   closed after 30 minutes of quiet) and the answer is sent the moment it is written.
 - **Model and thinking per topic.** `/model` shows the versions like the Claude app
   (Sonnet, Opus, Haiku), then asks the thinking level (Low to Max). Default: Sonnet, Medium.
-- **Push notifications.** `claude-telegram notify` posts to the 📣 Info topic from anywhere on
+- **Push notifications.** `j-claude-telegram notify` posts to the 📣 Info topic from anywhere on
   the server: cron jobs, scheduled tasks, any Claude session. Info stays clean: anything you
   write there (a question, a reply to a notification) moves to a new topic of its own, named
   after the notification, and Claude answers there.
@@ -54,11 +54,11 @@ logged in, [Bun](https://bun.sh), and a Telegram account.
 In Claude Code on the server:
 
 ```
-/plugin marketplace add smvueno/claude-telegram-topics
-/plugin install telegram-topics@claude-telegram-topics
+/plugin marketplace add smvueno/j-claude-telegram
+/plugin install j-claude-telegram@j-claude-telegram
 ```
 
-Then ask Claude: **"set up the Telegram topics bot"**. The `telegram-topics-setup` skill walks
+Then ask Claude: **"set up J Claude Telegram"**. The `j-claude-telegram:setup` skill walks
 you through making the bot in @BotFather, saving the token, installing the service and pairing
 your account.
 
@@ -69,29 +69,29 @@ your account.
    switch on Threaded mode in its settings. Optional: send `/setjoingroups` → Disable.
 2. Save the token where only you can read it:
    ```bash
-   mkdir -p -m 700 ~/.claude/channels/telegram-topics
-   ( umask 077; printf 'TELEGRAM_BOT_TOKEN=%s\n' 'PASTE_TOKEN' > ~/.claude/channels/telegram-topics/bot.env )
+   mkdir -p -m 700 ~/.claude/channels/j-claude-telegram
+   ( umask 077; printf 'TELEGRAM_BOT_TOKEN=%s\n' 'PASTE_TOKEN' > ~/.claude/channels/j-claude-telegram/bot.env )
    ```
-3. Install: `bash plugins/telegram-topics/deploy/install.sh`
-4. Message your bot. It answers with a code. Run `claude-telegram allow <code>`.
-5. Test: `claude-telegram notify -l done -t "It works" "Hello from the server"`
+3. Install: `bash plugins/j-claude-telegram/deploy/install.sh`
+4. Message your bot. It answers with a code. Run `j-claude-telegram allow <code>`.
+5. Test: `j-claude-telegram notify -l done -t "It works" "Hello from the server"`
 
 ## Notifications
 
 ```bash
-claude-telegram notify [-l info|done|warn|alert] [-t TITLE] [-s] [-f /path/file] [message | -]
+j-claude-telegram notify [-l info|done|warn|alert] [-t TITLE] [-s] [-f /path/file] [message | -]
 ```
 
 - Levels show as ℹ️ ✅ ⚠️ 🚨. `-s` delivers without sound. `-f` attaches files.
 - Without a message (or with `-`) the text is read from stdin, handy for scripts:
-  `backup.sh 2>&1 | tail -5 | claude-telegram notify -l warn -t "Backup failed" -`
-- With the plugin installed, every Claude session on the server has the `telegram-notify`
+  `backup.sh 2>&1 | tail -5 | j-claude-telegram notify -l warn -t "Backup failed" -`
+- With the plugin installed, every Claude session on the server has the `j-claude-telegram:notify`
   skill: it knows when a notification is worth sending, how to write one for a lock screen,
   and what must never go in one (secrets, other people's personal data).
 
 ## Settings
 
-`~/.claude/channels/telegram-topics/config.json` is created on first start. Restart the
+`~/.claude/channels/j-claude-telegram/config.json` is created on first start. Restart the
 service after changing it.
 
 | Key | Default | Meaning |
@@ -111,7 +111,7 @@ service after changing it.
 | `inboxKeepDays` | `30` | Delete files sent to the bot after this many days (0 = keep) |
 | `limitWarnAt` | `0.9` | Notify when plan usage passes this share (0 = never) |
 
-`CLAUDE_TELEGRAM_HOME` moves the whole private folder elsewhere.
+`J_CLAUDE_TELEGRAM_HOME` moves the whole private folder elsewhere.
 
 ## Security
 
@@ -131,7 +131,7 @@ fully trust, and keep the token private.
 ## Development
 
 ```bash
-cd plugins/telegram-topics/bot
+cd plugins/j-claude-telegram/bot
 bun install
 bun test
 bash ../deploy/install.sh --in-place   # run the service from this checkout

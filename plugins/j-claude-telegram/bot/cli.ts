@@ -7,10 +7,10 @@ import { STATE_DIR, STATE_FILE } from "./paths";
 import { State } from "./state";
 import { loadToken } from "./token";
 
-const USAGE = `claude-telegram: helper for the Claude Telegram topics bot
+const USAGE = `j-claude-telegram: helper for the J Claude Telegram bot
 
-  claude-telegram notify [options] [message]   push a notification (see: notify --help)
-  claude-telegram allow <code>                 let the person who got this pairing code use the bot`;
+  j-claude-telegram notify [options] [message]   push a notification (see: notify --help)
+  j-claude-telegram allow <code>                 let the person who got this pairing code use the bot`;
 
 async function main(argv: string[]): Promise<number> {
   const [sub, ...rest] = argv;
@@ -18,7 +18,7 @@ async function main(argv: string[]): Promise<number> {
   if (sub === "allow") {
     const code = rest[0];
     if (!code) {
-      console.error("Usage: claude-telegram allow <code>");
+      console.error("Usage: j-claude-telegram allow <code>");
       return 2;
     }
     const userId = new State(STATE_FILE).allow(code);

@@ -1,10 +1,10 @@
 # Plan: shareable repo, info channel, notify skill (done)
 
 1. **Shareable layout.** The repo is a plugin marketplace (`.claude-plugin/marketplace.json`)
-   with one plugin in `plugins/telegram-topics` (bot, skills, installer). Nothing personal in
+   with one plugin in `plugins/j-claude-telegram` (bot, skills, installer). Nothing personal in
    the code: owner name, Claude command, work folder and time zone are settings; private files
-   live in `~/.claude/channels/telegram-topics`, never in the repo. Fresh git history.
-2. **Info channel.** `claude-telegram notify` makes a "📣 Info" topic in each paired person's
+   live in `~/.claude/channels/j-claude-telegram`, never in the repo. Fresh git history.
+2. **Info channel.** `j-claude-telegram notify` makes a "📣 Info" topic in each paired person's
    private chat on first use (Bot API `createForumTopic`; private chats need Threaded mode,
    without it the main chat is used), remembers it, and makes it again if it was deleted.
    Levels info/done/warn/alert, silent, files, stdin.
@@ -13,10 +13,10 @@
    message in a topic). Anything written in 📣 Info moves to a new topic ("Re: <notification
    title>" or the first words), the original is deleted from Info, and Claude answers there.
    Commands such as /status still answer in Info.
-4. **Skills.** `telegram-notify` (when and how to notify, what never to include) and
-   `telegram-topics-setup` (install and pair, step by step).
+4. **Skills.** `j-claude-telegram:notify` (when and how to notify, what never to include) and
+   `j-claude-telegram:setup` (install and pair, step by step).
 5. **Installer.** `deploy/install.sh`: copies or runs in place, system service for root, user
-   service otherwise, `claude-telegram` command, 5-minute health check.
+   service otherwise, `j-claude-telegram` command, 5-minute health check.
 6. **Before every push:** `scripts/check-private.sh` scans for tokens, keys, emails and your own
    private words. Private GitHub repo first; public only when the owner decides.
 

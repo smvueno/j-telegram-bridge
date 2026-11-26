@@ -1,5 +1,5 @@
 {
-  "name": "claude-telegram",
+  "name": "j-claude-telegram",
   "private": true,
   "type": "module",
   "scripts": {

@@ -9,7 +9,7 @@ export type NotifyArgs = {
   message: string | null;
 };
 
-export const NOTIFY_USAGE = `Usage: claude-telegram notify [options] [message]
+export const NOTIFY_USAGE = `Usage: j-claude-telegram notify [options] [message]
 
 Sends a push notification to the "📣 Info" topic of everyone paired with the bot.
 
@@ -21,8 +21,8 @@ Options:
   -h, --help           this help
 
 The message is the rest of the line, or stdin when it is "-" or left out:
-  claude-telegram notify -l done -t "Report ready" "12 new bookings, nothing to fix."
-  some-command 2>&1 | tail -20 | claude-telegram notify -l warn -t "Nightly job failed" -`;
+  j-claude-telegram notify -l done -t "Report ready" "12 new bookings, nothing to fix."
+  some-command 2>&1 | tail -20 | j-claude-telegram notify -l warn -t "Nightly job failed" -`;
 
 /** Parses the words after "notify". Throws Error with a message for bad input. */
 export function parseNotifyArgs(argv: string[]): NotifyArgs | "help" {
