@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-telegram-topics",
+  "description": "Use Claude Code on your own server from Telegram: one Telegram topic per Claude conversation, plus push notifications from Claude and scheduled tasks.",
+  "owner": {
+    "name": "smvueno"
+  },
+  "plugins": [
+    {
+      "name": "telegram-topics",
+      "description": "Telegram bot for Claude Code on a Linux server: each topic in your private chat is its own Claude conversation (model and thinking per topic), a 📣 Info topic for push notifications, and skills so Claude knows how to notify you and how to install the bot.",
+      "author": { "name": "smvueno" },
+      "source": "./plugins/telegram-topics",
+      "category": "productivity"
+    }
+  ]
+}

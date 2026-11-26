@@ -1,0 +1,9 @@
+node_modules/
+# private files never live in the repo; these are extra guards
+*.env
+.env*
+state.json
+config.json
+heartbeat
+inbox/
+*.log

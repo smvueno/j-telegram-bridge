@@ -1,0 +1,11 @@
+{
+  "name": "claude-telegram",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "grammy": "^1.35.0"
+  }
+}
