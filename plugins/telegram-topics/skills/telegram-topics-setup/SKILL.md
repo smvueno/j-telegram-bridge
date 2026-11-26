@@ -26,8 +26,9 @@ the skill loads).
 ## 2. Make the bot in Telegram (the user does this)
 
 1. In Telegram, open **@BotFather**, send `/newbot`, pick a name and a username ending in `bot`.
-2. Still in BotFather: open the bot's settings and turn on **Threaded mode** (topics in the
-   private chat). Without it everything works, but in one chat instead of topics.
+2. Turn on **Threaded mode** (topics in the private chat): in the chat with @BotFather tap
+   **Open App** (next to the message field), pick the bot, and switch on Threaded mode in its
+   settings. Without it everything works, but in one chat instead of topics.
 3. Optional but recommended: `/setjoingroups` → Disable, so nobody can add it to groups.
 4. Copy the token BotFather shows (`123456789:AA...`).
 

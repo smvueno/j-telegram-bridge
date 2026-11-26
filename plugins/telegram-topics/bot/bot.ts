@@ -5,7 +5,7 @@ import { Bot, GrammyError, InlineKeyboard, InputFile, type Api } from "grammy";
 import { loadConfig } from "./config";
 import { State } from "./state";
 import { splitMessage, extractSendFiles } from "./text";
-import { TopicTracker } from "./topics";
+import { TopicTracker, topicNameFor } from "./topics";
 import { TopicQueue } from "./queue";
 import { systemNote } from "./prompt";
 import { loadToken } from "./token";
@@ -686,8 +686,8 @@ async function main(): Promise<void> {
 
     const now = Date.now();
     const threadId = ctx.message.message_thread_id;
-    const key = tracker.keyFor(chatId, threadId, now);
-    const { threadId: parsedThread } = parseKey(key);
+    let key = tracker.keyFor(chatId, threadId, now);
+    let { threadId: parsedThread } = parseKey(key);
 
     const parsed = parseCommand(ctx.message.text ?? ctx.message.caption);
     const cmd = parsed?.cmd ?? null;
@@ -762,15 +762,37 @@ async function main(): Promise<void> {
     // that message too. Telegram also sets reply_to_message to the topic's first message for every
     // message in a topic, so skip that one.
     const replied = ctx.message.reply_to_message;
-    if (
+    const quoted =
       replied &&
       replied.from?.is_bot &&
       replied.message_id !== ctx.message.message_thread_id &&
       !replied.forum_topic_created
-    ) {
-      const quoted = (replied.text ?? replied.caption ?? "").trim().slice(0, 2000);
-      if (quoted) prompt = `[Replying to this earlier bot message:\n${quoted}\n]\n\n${prompt}`;
+        ? (replied.text ?? replied.caption ?? "").trim().slice(0, 2000)
+        : "";
+
+    // 📣 Info stays for notifications only: anything written there moves to a new topic of its
+    // own (named after the notification it replies to), and the conversation continues there.
+    let moveOutOfInfo = false;
+    const infoThread = state.infoThreadFor(userId);
+    if (infoThread !== undefined && parsedThread === infoThread) {
+      try {
+        const topic = await bot.api.createForumTopic(chatId, topicNameFor(prompt, quoted || undefined));
+        const wrote = prompt || "(a file)";
+        const header = quoted
+          ? `Moved here from ${config.infoTopicName}. You replied to:\n${quoted}\n\nYou wrote:\n${wrote}`
+          : `Moved here from ${config.infoTopicName}. You wrote:\n${wrote}`;
+        await sendPlain(bot.api, chatId, topic.message_thread_id, header);
+        key = `${chatId}:${topic.message_thread_id}`;
+        parsedThread = topic.message_thread_id;
+        moveOutOfInfo = true;
+        log(`info_moved key=${key}`);
+      } catch (e) {
+        // topics unavailable: answer in Info as before
+        logErr(`info_move err=${e instanceof Error ? e.message.slice(0, 80) : "?"}`);
+      }
     }
+
+    if (quoted) prompt = `[Replying to this earlier bot message:\n${quoted}\n]\n\n${prompt}`;
     const fileLines: string[] = [];
 
     const tooBigReply = async (): Promise<void> => {
@@ -849,6 +871,9 @@ async function main(): Promise<void> {
     }
 
     if (!prompt) return;
+
+    // the copy in the new topic is kept; Info keeps only notifications
+    if (moveOutOfInfo) await ctx.deleteMessage().catch(() => {});
 
     log(`enqueue key=${key} prompt_len=${prompt.length}`);
     queue.push(key, () => runTopicJob(key, chatId, parsedThread, prompt));

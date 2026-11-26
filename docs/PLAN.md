@@ -10,7 +10,9 @@
    Levels info/done/warn/alert, silent, files, stdin.
 3. **Replies to notifications.** A reply to a bot message quotes that message to Claude
    (skipping the topic's own first message, which Telegram sets as the reply target of every
-   message in a topic).
+   message in a topic). Anything written in 📣 Info moves to a new topic ("Re: <notification
+   title>" or the first words), the original is deleted from Info, and Claude answers there.
+   Commands such as /status still answer in Info.
 4. **Skills.** `telegram-notify` (when and how to notify, what never to include) and
    `telegram-topics-setup` (install and pair, step by step).
 5. **Installer.** `deploy/install.sh`: copies or runs in place, system service for root, user

@@ -18,8 +18,9 @@ else's cloud except Telegram and Claude itself.
 - **Model and thinking per topic.** `/model` shows the versions like the Claude app
   (Sonnet, Opus, Haiku), then asks the thinking level (Low to Max). Default: Sonnet, Medium.
 - **Push notifications.** `claude-telegram notify` posts to the 📣 Info topic from anywhere on
-  the server: cron jobs, scheduled tasks, any Claude session. Reply to a notification and the
-  Claude in that topic sees what you replied to.
+  the server: cron jobs, scheduled tasks, any Claude session. Info stays clean: anything you
+  write there (a question, a reply to a notification) moves to a new topic of its own, named
+  after the notification, and Claude answers there.
 - **A useful `/status`.** Model and thinking, your Claude plan usage (5-hour and weekly, with
   reset times), CPU, memory, disk, and the top 5 processes by CPU and by memory.
 - **Photos and files** you send reach Claude; Claude can send files back.
@@ -57,8 +58,9 @@ your account.
 
 ### By hand
 
-1. In Telegram, **@BotFather** → `/newbot`. In the bot's settings turn on **Threaded mode**.
-   Optional: `/setjoingroups` → Disable.
+1. In Telegram, **@BotFather** → `/newbot`. Then turn on **Threaded mode**: open the chat with
+   @BotFather, tap **Open App** (the button next to the message field), pick your bot and
+   switch on Threaded mode in its settings. Optional: send `/setjoingroups` → Disable.
 2. Save the token where only you can read it:
    ```bash
    mkdir -p -m 700 ~/.claude/channels/telegram-topics

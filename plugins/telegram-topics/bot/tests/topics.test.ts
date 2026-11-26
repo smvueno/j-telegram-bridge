@@ -27,3 +27,16 @@ describe("TopicTracker", () => {
     expect(tracker.keyFor(5, undefined, t + 61_000)).toBe("5:0");
   });
 });
+import { topicNameFor } from "../topics";
+import { test as t3, expect as e3 } from "bun:test";
+
+t3("a message moved out of Info gets a short topic name", () => {
+  e3(topicNameFor("why did the backup fail?")).toBe("why did the backup fail?");
+  e3(topicNameFor("what should I do", "⚠️ Nightly import failed\n\nstep 3 of 5")).toBe("Re: Nightly import failed");
+  e3(topicNameFor("x", "✅ Backup finished")).toBe("Re: Backup finished");
+  const long = topicNameFor("can you look into why the server was so slow this morning around nine");
+  e3(long.length).toBeLessThanOrEqual(41);
+  e3(long.endsWith("…")).toBe(true);
+  e3(long).toBe("can you look into why the server was so…");
+  e3(topicNameFor("   ")).toBe("New question");
+});

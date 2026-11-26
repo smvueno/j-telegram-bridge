@@ -6,7 +6,8 @@ description: Send a push notification to the owner's phone through the Claude Te
 # Telegram notifications
 
 The owner gets these as push notifications on their phone, in the **📣 Info** topic of their
-private chat with the bot. They can reply there and a Claude in that topic sees which
+private chat with the bot. Info holds only notifications: when they reply to one, the bot moves
+the reply to a new topic named after the notification, and a Claude there sees which
 notification they replied to.
 
 ## How to send one
