@@ -6,6 +6,8 @@ import { loadConfig } from "./config";
 import { State } from "./state";
 import { splitMessage, extractSendFiles } from "./text";
 import { TopicTracker, topicNameFor } from "./topics";
+import { deleteConversation, topicInboxDir } from "./history";
+import { rm } from "node:fs/promises";
 import { TopicQueue } from "./queue";
 import { systemNote } from "./prompt";
 import { loadToken } from "./token";
@@ -252,6 +254,44 @@ async function main(): Promise<void> {
   void writeHeartbeat();
   setInterval(() => void writeHeartbeat(), config.heartbeatSeconds * 1000).unref?.();
 
+  /** "message thread not found" / "TOPIC_ID_INVALID": the topic was deleted in Telegram. */
+  const topicGone = (e: unknown): boolean =>
+    e instanceof GrammyError && /TOPIC_ID_INVALID|thread not found|TOPIC_DELETED/i.test(e.description);
+
+  /** A topic was deleted in Telegram: stop its Claude, delete its conversation history and files. */
+  const cleanupTopic = async (key: string, why: string): Promise<void> => {
+    abortByKey.get(key)?.abort();
+    queue.drop(key);
+    dropPoolEntry(key);
+    const { chatId, threadId } = parseKey(key);
+    if (state.infoThreadFor(chatId) === threadId) state.clearInfoThread(chatId);
+    const sessionId = state.forgetTopic(key);
+    const removed = sessionId ? deleteConversation(sessionId) : 0;
+    await rm(topicInboxDir(INBOX_DIR, key), { recursive: true, force: true }).catch(() => {});
+    log(`topic_deleted key=${key} why=${why} history_files=${removed}`);
+  };
+
+  /**
+   * Telegram does not tell bots when a topic is deleted, so look: renaming a topic to the name it
+   * already has changes nothing and adds no message, but fails with TOPIC_ID_INVALID once it is
+   * gone. Names come from the topic being made or renamed (sure) or from its first message (guess).
+   */
+  const sweepDeletedTopics = async (): Promise<void> => {
+    for (const key of state.knownTopics()) {
+      const { chatId, threadId } = parseKey(key);
+      const known = state.topicName(key);
+      // a guessed name (from the topic's first message) is only wrong if the topic was renamed
+      // before this bot started following renames; renaming it back is the worst case
+      if (!threadId || !known || !state.isAllowed(chatId)) continue;
+      try {
+        await bot.api.editForumTopic(chatId, threadId, { name: known.name });
+      } catch (e) {
+        if (topicGone(e)) await cleanupTopic(key, "deleted");
+      }
+      await Bun.sleep(300);
+    }
+  };
+
   const timeoutMs = config.timeoutMinutes * 60_000;
 
   async function runTopicJob(
@@ -431,6 +471,10 @@ async function main(): Promise<void> {
       }
       const msg = e instanceof Error ? e.message : "job failed";
       logErr(`run_fail key=${key} ms=${Date.now() - started} err=${msg.slice(0, 120)}`);
+      if (topicGone(e)) {
+        await cleanupTopic(key, "gone while answering");
+        return;
+      }
       try {
         await sendPlain(bot.api, chatId, threadId, `⚠️ ${msg.slice(0, 500)}`);
       } catch {
@@ -659,7 +703,18 @@ async function main(): Promise<void> {
     const threadId = ctx.message.message_thread_id;
     if (threadId !== undefined) {
       tracker.noteNewTopic(chatId, threadId, Date.now());
+      if (ctx.from && state.isAllowed(ctx.from.id)) {
+        state.noteTopicName(`${chatId}:${threadId}`, ctx.message.forum_topic_created.name, true);
+      }
       log(`topic_created key=${chatId}:${threadId}`);
+    }
+  });
+
+  bot.on("message:forum_topic_edited", async (ctx) => {
+    const threadId = ctx.message.message_thread_id;
+    const name = ctx.message.forum_topic_edited.name;
+    if (threadId !== undefined && name && ctx.from && state.isAllowed(ctx.from.id)) {
+      state.noteTopicName(`${ctx.chat!.id}:${threadId}`, name, true);
     }
   });
 
@@ -762,6 +817,10 @@ async function main(): Promise<void> {
     // that message too. Telegram also sets reply_to_message to the topic's first message for every
     // message in a topic, so skip that one.
     const replied = ctx.message.reply_to_message;
+    // the topic's first message carries its name as it was made (a guess: it may have been renamed)
+    if (replied?.forum_topic_created && replied.message_id === ctx.message.message_thread_id) {
+      state.noteTopicName(key, replied.forum_topic_created.name, false);
+    }
     const quoted =
       replied &&
       replied.from?.is_bot &&
@@ -776,7 +835,9 @@ async function main(): Promise<void> {
     const infoThread = state.infoThreadFor(userId);
     if (infoThread !== undefined && parsedThread === infoThread) {
       try {
-        const topic = await bot.api.createForumTopic(chatId, topicNameFor(prompt, quoted || undefined));
+        const topicName = topicNameFor(prompt, quoted || undefined);
+        const topic = await bot.api.createForumTopic(chatId, topicName);
+        state.noteTopicName(`${chatId}:${topic.message_thread_id}`, topicName, true);
         const wrote = prompt || "(a file)";
         const header = quoted
           ? `Moved here from ${config.infoTopicName}. You replied to:\n${quoted}\n\nYou wrote:\n${wrote}`
@@ -811,7 +872,9 @@ async function main(): Promise<void> {
         await tooBigReply();
         return null;
       }
-      const dest = join(INBOX_DIR, `${Date.now()}-${safeFilename(name)}`);
+      const dir = topicInboxDir(INBOX_DIR, key);
+      await mkdir(dir, { recursive: true, mode: 0o700 });
+      const dest = join(dir, `${Date.now()}-${safeFilename(name)}`);
       try {
         await downloadTelegramFile(bot.api, token, fileId, dest);
         return dest;
@@ -910,6 +973,14 @@ async function main(): Promise<void> {
   await bot.start({
     onStart: () => {
       log("polling started");
+      if (config.topicSweepMinutes > 0) {
+        const sweep = () =>
+          void sweepDeletedTopics().catch((e) =>
+            logErr(`sweep err=${e instanceof Error ? e.message.slice(0, 80) : "?"}`),
+          );
+        setTimeout(sweep, 60_000).unref?.();
+        setInterval(sweep, config.topicSweepMinutes * 60_000).unref?.();
+      }
       const commands = [
         { command: "model", description: "Model and thinking" },
         { command: "new", description: "Fresh conversation" },

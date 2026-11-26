@@ -46,6 +46,7 @@ export async function ensureInfoTopic(
   try {
     const topic = await api.createForumTopic(userId, name);
     state.setInfoThread(userId, topic.message_thread_id);
+    state.noteTopicName(`${userId}:${topic.message_thread_id}`, name, true);
     return topic.message_thread_id;
   } catch {
     return undefined;

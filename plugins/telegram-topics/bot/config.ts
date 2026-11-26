@@ -23,6 +23,8 @@ export type Config = {
   workDir: string;
   /** Name of the notifications topic the bot creates in each allowed person's chat. */
   infoTopicName: string;
+  /** How often to look for topics deleted in Telegram (their Claude, history and files are removed). 0 = never. */
+  topicSweepMinutes: number;
   editEveryMs: number;
   newTopicGraceMs: number;
   heartbeatSeconds: number;
@@ -42,6 +44,7 @@ const DEFAULTS: Config = {
   claudeBin: DEFAULT_CLAUDE,
   workDir: homedir(),
   infoTopicName: "📣 Info",
+  topicSweepMinutes: 15,
   // the server's own zone until /timezone sets another
   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
   editEveryMs: 3000,

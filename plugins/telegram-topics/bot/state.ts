@@ -30,6 +30,8 @@ type StateData = {
   timeZone?: string;
   /** user id -> message_thread_id of their notifications topic */
   infoThreads: Record<string, number>;
+  /** topic key -> its name; sure = seen when made or renamed (safe to use for the existence check) */
+  topicNames: Record<string, { name: string; sure: boolean }>;
 };
 
 const emptyState = (): StateData => ({
@@ -40,6 +42,7 @@ const emptyState = (): StateData => ({
   efforts: {},
   modelIds: {},
   infoThreads: {},
+  topicNames: {},
 });
 
 export class State {
@@ -68,6 +71,7 @@ export class State {
       planUsage: raw.planUsage,
       timeZone: raw.timeZone,
       infoThreads: raw.infoThreads ?? {},
+      topicNames: raw.topicNames ?? {},
     };
     this.pruneExpiredPending();
   }
@@ -212,6 +216,39 @@ export class State {
     this.loadSync();
     delete this.data.infoThreads[String(userId)];
     this.persist();
+  }
+
+  topicName(key: string): { name: string; sure: boolean } | undefined {
+    this.loadSync();
+    return this.data.topicNames[key];
+  }
+
+  /** A guessed name (sure=false) never replaces a sure one. */
+  noteTopicName(key: string, name: string, sure: boolean): void {
+    this.loadSync();
+    const cur = this.data.topicNames[key];
+    if (cur && cur.sure && !sure) return;
+    if (cur && cur.name === name && cur.sure === sure) return;
+    this.data.topicNames[key] = { name, sure };
+    this.persist();
+  }
+
+  /** Every topic key the bot knows something about. */
+  knownTopics(): string[] {
+    this.loadSync();
+    return [...new Set([...Object.keys(this.data.sessions), ...Object.keys(this.data.topicNames)])];
+  }
+
+  /** Drops everything about a deleted topic; returns its conversation id, if any. */
+  forgetTopic(key: string): string | undefined {
+    this.loadSync();
+    const id = this.data.sessions[key];
+    delete this.data.sessions[key];
+    delete this.data.models[key];
+    delete this.data.efforts[key];
+    delete this.data.topicNames[key];
+    this.persist();
+    return id;
   }
 
   clearSession(key: string): void {

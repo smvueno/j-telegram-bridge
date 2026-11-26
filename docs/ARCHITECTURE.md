@@ -21,6 +21,7 @@ claude-telegram notify ──(Telegram Bot API)──▶ 📣 Info topic   (cli.
 | `config.ts` | Defaults and `config.json` |
 | `models.ts`, `timezone.ts`, `server-status.ts`, `text.ts` | Labels, times, `/status` sections, message splitting and `SEND_FILE:` lines |
 | `notify.ts`, `notify-args.ts`, `cli.ts` | The `claude-telegram` command: `notify` and `allow` |
+| `history.ts` | Deletes a conversation's files; one inbox folder per topic |
 | `paths.ts`, `token.ts`, `prompt.ts` | Private folder, token, the note added to Claude's system prompt |
 
 ## Decisions
@@ -37,4 +38,9 @@ claude-telegram notify ──(Telegram Bot API)──▶ 📣 Info topic   (cli.
   [SECURITY.md](../SECURITY.md).
 - **Notifications go straight to the Bot API** from the CLI (sending does not conflict with the
   bot's polling), so they work even while the bot restarts.
+- **Deleted topics.** Telegram sends bots nothing when a topic is deleted. Every
+  `topicSweepMinutes` the bot renames each known topic to the name it already has: no visible
+  change, but `TOPIC_ID_INVALID` once it is gone. Then its Claude is stopped and its
+  conversation file (`~/.claude/projects/*/<id>.jsonl`), settings and inbox folder are deleted.
+  Names come from the topic being made or renamed, or (a guess) from its first message.
 - **Plain text out.** Telegram's Markdown modes break on ordinary text; answers are sent as is.

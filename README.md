@@ -24,6 +24,9 @@ else's cloud except Telegram and Claude itself.
 - **A useful `/status`.** Model and thinking, your Claude plan usage (5-hour and weekly, with
   reset times), CPU, memory, disk, and the top 5 processes by CPU and by memory.
 - **Photos and files** you send reach Claude; Claude can send files back.
+- **Cleans up after itself.** Delete a topic in Telegram and, within 15 minutes, its running
+  Claude is stopped and its conversation history and files are deleted from the server.
+  (Pin 📣 Info yourself: long-press it → Pin. Bots cannot pin topics.)
 - **Locked to you.** Only paired Telegram accounts get anything; groups are ignored.
 - **Keeps itself running.** systemd restarts it on crashes and at boot, and a health check
   restarts it if it freezes.
@@ -101,6 +104,7 @@ service after changing it.
 | `timeoutMinutes` | `30` | Longest a single reply may take |
 | `timeZone` | the server's | Times in `/status` (also `/timezone`) |
 | `infoTopicName` | `📣 Info` | Name of the notifications topic |
+| `topicSweepMinutes` | `15` | How often to look for deleted topics (0 = never) |
 
 `CLAUDE_TELEGRAM_HOME` moves the whole private folder elsewhere.
 
