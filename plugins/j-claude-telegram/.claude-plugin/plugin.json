@@ -1,8 +1,0 @@
-{
-  "name": "j-claude-telegram",
-  "description": "J Claude Telegram: Claude Code in Telegram topics on your own server, with push notifications. Skills: j-claude-telegram:notify (send a notification to your phone) and j-claude-telegram:setup (install the bot).",
-  "version": "2.1.0",
-  "author": { "name": "smvueno" },
-  "license": "MIT",
-  "keywords": ["telegram", "notifications", "push", "remote", "topics", "server"]
-}

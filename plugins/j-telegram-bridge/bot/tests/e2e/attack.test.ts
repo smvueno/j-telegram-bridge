@@ -14,7 +14,7 @@ const OWNER = 1001;
 const STRANGER = 2002;
 const root = mkdtempSync(join(tmpdir(), "jct-e2e-"));
 const home = join(root, "home");
-const stateDir = join(home, ".claude", "channels", "j-claude-telegram");
+const stateDir = join(home, ".claude", "channels", "j-telegram-bridge");
 const work = join(root, "work");
 const claudeLog = join(root, "claude.log");
 const tg = new FakeTelegram().start();
@@ -71,7 +71,7 @@ beforeAll(async () => {
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("TELEGRAM_")));
   bot = Bun.spawn([process.execPath, join(import.meta.dir, "..", "..", "bot.ts")], {
     cwd: join(import.meta.dir, "..", ".."),
-    env: { ...env, HOME: home, J_CLAUDE_TELEGRAM_HOME: stateDir, FAKE_CLAUDE_LOG: claudeLog },
+    env: { ...env, HOME: home, J_TELEGRAM_BRIDGE_HOME: stateDir, FAKE_CLAUDE_LOG: claudeLog },
     stdout: "pipe",
     stderr: "pipe",
   });

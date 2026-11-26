@@ -66,7 +66,7 @@ export class State {
   private lockDepth = 0;
 
   /**
-   * Runs a read-change-write under a lock file, so the bot and the j-claude-telegram command
+   * Runs a read-change-write under a lock file, so the bot and the j-telegram-bridge command
    * never overwrite each other's changes. Re-entrant; a lock older than 5 s is taken as stale.
    */
   private withLock<T>(fn: () => T): T {

@@ -3,7 +3,7 @@ import { mkdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { State } from "../state";
 
-const tmpDir = join("/tmp", `j-claude-telegram-state-${process.pid}`);
+const tmpDir = join("/tmp", `j-telegram-bridge-state-${process.pid}`);
 
 beforeEach(async () => {
   await mkdir(tmpDir, { recursive: true });

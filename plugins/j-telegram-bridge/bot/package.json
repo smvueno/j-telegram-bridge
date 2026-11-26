@@ -1,5 +1,5 @@
 {
-  "name": "j-claude-telegram",
+  "name": "j-telegram-bridge",
   "private": true,
   "type": "module",
   "scripts": {

@@ -1,17 +1,21 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "j-claude-telegram",
+  "name": "j-telegram-bridge",
   "description": "Use Claude Code on your own server from Telegram: one Telegram topic per Claude conversation, plus push notifications from Claude and scheduled tasks.",
   "owner": {
     "name": "smvueno"
   },
   "plugins": [
     {
-      "name": "j-claude-telegram",
-      "description": "Telegram bot for Claude Code on a Linux server: each topic in your private chat is its own Claude conversation (model and thinking per topic), a 📣 Info topic for push notifications, and skills so Claude knows how to notify you and how to install the bot.",
-      "author": { "name": "smvueno" },
-      "source": "./plugins/j-claude-telegram",
-      "category": "productivity"
+      "name": "j-telegram-bridge",
+      "description": "Use Claude Code on your own Linux server from Telegram: one topic per Claude conversation, push notifications from Claude and scheduled tasks, and skills to notify you and to install the bot.",
+      "author": {
+        "name": "smvueno",
+        "url": "https://github.com/smvueno"
+      },
+      "source": "./plugins/j-telegram-bridge",
+      "category": "productivity",
+      "homepage": "https://github.com/smvueno/j-telegram-bridge"
     }
   ]
 }

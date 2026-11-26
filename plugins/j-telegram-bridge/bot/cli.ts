@@ -7,12 +7,12 @@ import { STATE_DIR, STATE_FILE } from "./paths";
 import { State } from "./state";
 import { loadToken } from "./token";
 
-const USAGE = `j-claude-telegram: helper for the J Claude Telegram bot
+const USAGE = `j-telegram-bridge: helper for the J Telegram Bridge bot
 
-  j-claude-telegram notify [options] [message]   push a notification (see: notify --help)
-  j-claude-telegram allow <code>                 let the person who got this pairing code use the bot
-  j-claude-telegram list                         who may use the bot
-  j-claude-telegram disallow <user id>           take someone off the list`;
+  j-telegram-bridge notify [options] [message]   push a notification (see: notify --help)
+  j-telegram-bridge allow <code>                 let the person who got this pairing code use the bot
+  j-telegram-bridge list                         who may use the bot
+  j-telegram-bridge disallow <user id>           take someone off the list`;
 
 async function main(argv: string[]): Promise<number> {
   const [sub, ...rest] = argv;
@@ -20,7 +20,7 @@ async function main(argv: string[]): Promise<number> {
   if (sub === "allow") {
     const code = rest[0];
     if (!code) {
-      console.error("Usage: j-claude-telegram allow <code>");
+      console.error("Usage: j-telegram-bridge allow <code>");
       return 2;
     }
     const state = new State(STATE_FILE);
@@ -40,7 +40,7 @@ async function main(argv: string[]): Promise<number> {
         topicName: config.infoTopicName,
         level: "alert",
         title: "Someone new can use the bot",
-        body: `Telegram user ${userId} was just paired on the server. If that was not you: j-claude-telegram disallow ${userId}`,
+        body: `Telegram user ${userId} was just paired on the server. If that was not you: j-telegram-bridge disallow ${userId}`,
       }).catch(() => {});
     }
     return 0;
@@ -58,7 +58,7 @@ async function main(argv: string[]): Promise<number> {
   if (sub === "disallow") {
     const id = Number(rest[0]);
     if (!Number.isInteger(id) || id <= 0) {
-      console.error("Usage: j-claude-telegram disallow <user id>   (see: j-claude-telegram list)");
+      console.error("Usage: j-telegram-bridge disallow <user id>   (see: j-telegram-bridge list)");
       return 2;
     }
     const removed = new State(STATE_FILE).disallow(id);

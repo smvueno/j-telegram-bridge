@@ -1,0 +1,11 @@
+{
+  "name": "j-telegram-bridge",
+  "displayName": "J Telegram Bridge",
+  "description": "Use Claude Code on your own Linux server from Telegram: one Telegram topic per Claude conversation (model and thinking level per topic), push notifications to a 📣 Info topic from Claude and scheduled tasks, and a useful /status. Includes skills to send notifications and to install the bot.",
+  "version": "3.0.0",
+  "author": { "name": "smvueno", "url": "https://github.com/smvueno" },
+  "homepage": "https://github.com/smvueno/j-telegram-bridge",
+  "repository": "https://github.com/smvueno/j-telegram-bridge",
+  "license": "MIT",
+  "keywords": ["telegram", "notifications", "push", "remote", "topics", "server", "systemd"]
+}

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { refuseToSend } from "../send-guard";
 
 const home = mkdtempSync(join(tmpdir(), "ctg-home-"));
-const state = join(home, ".claude", "channels", "j-claude-telegram");
+const state = join(home, ".claude", "channels", "j-telegram-bridge");
 mkdirSync(state, { recursive: true });
 mkdirSync(join(home, ".ssh"));
 mkdirSync(join(home, "work"));

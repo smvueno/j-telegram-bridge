@@ -7,9 +7,9 @@ that runs the service, in auto permission mode**. Please read this before you in
 
 - Only Telegram accounts on the allow list get any answer. Everyone else gets one line with a
   pairing code (at most once per 10 minutes) and nothing more.
-- A code does nothing until someone with access to the server runs `j-claude-telegram allow <code>`.
+- A code does nothing until someone with access to the server runs `j-telegram-bridge allow <code>`.
   Everyone already paired gets an 🚨 notification when that happens. See who is paired with
-  `j-claude-telegram list`; remove someone with `j-claude-telegram disallow <id>`.
+  `j-telegram-bridge list`; remove someone with `j-telegram-bridge disallow <id>`.
   **Never approve a code that someone sent you.** It gives that account the same power as you.
 - The allow list holds numeric Telegram user ids, not usernames, so a changed or copied
   username does not get in.
@@ -35,7 +35,7 @@ shell as that Linux user. To limit the damage:
 ## The bot token
 
 - Whoever has the token controls the bot (can read new messages to it and answer as it).
-- It is stored in `~/.claude/channels/j-claude-telegram/bot.env`, readable only by its owner
+- It is stored in `~/.claude/channels/j-telegram-bridge/bot.env`, readable only by its owner
   (folder 700, file 600), outside the code folder, and never logged.
 - It is deliberately **not** in `~/.claude/channels/telegram/.env`, which Anthropic's official
   telegram plugin reads.
@@ -47,12 +47,12 @@ shell as that Linux user. To limit the damage:
 
 Your messages, Claude's answers, files you or Claude send, and notifications go through
 Telegram's servers. Do not use it for data you are not allowed to give to Telegram. The
-`j-claude-telegram:notify` skill tells Claude never to put secrets or other people's personal data in a
+`j-telegram-bridge:notify` skill tells Claude never to put secrets or other people's personal data in a
 notification.
 
 ## Private files
 
-Everything private lives in `~/.claude/channels/j-claude-telegram/` (or `J_CLAUDE_TELEGRAM_HOME`):
+Everything private lives in `~/.claude/channels/j-telegram-bridge/` (or `J_TELEGRAM_BRIDGE_HOME`):
 `bot.env`, `state.json` (allow list, conversation ids, choices), `config.json`, `inbox/`
 (files sent to the bot). None of it is in the repository, and `.gitignore` blocks those names
 as an extra guard. Files in `inbox/` are deleted after `inboxKeepDays` (30) and when their topic

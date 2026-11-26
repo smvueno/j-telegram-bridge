@@ -1,10 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { TOKEN_FILE } from "./paths";
 
-/** The bot token: TELEGRAM_BOT_TOKEN in the environment, else the TELEGRAM_BOT_TOKEN= line in bot.env. Never log it. */
+/**
+ * The bot token: the TELEGRAM_BOT_TOKEN= line in bot.env (owner-only file). Deliberately not read
+ * from the environment, so no other program's variables can leak into it. Never log it.
+ */
 export async function loadToken(): Promise<string> {
-  const fromEnv = process.env.TELEGRAM_BOT_TOKEN?.trim();
-  if (fromEnv) return fromEnv;
   let raw: string;
   try {
     raw = await readFile(TOKEN_FILE, "utf8");

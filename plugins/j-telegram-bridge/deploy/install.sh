@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-# Installs the J Claude Telegram bot as an always-on systemd service.
+# Installs the J Telegram Bridge bot as an always-on systemd service.
 #
-#   bash install.sh             copy the bot to ~/.local/share/j-claude-telegram and run it from there
+#   bash install.sh             copy the bot to ~/.local/share/j-telegram-bridge and run it from there
 #   bash install.sh --in-place  run the bot from this checkout (for development)
 #
 # Root gets a system service (/etc/systemd/system); any other user a user service.
-# The token must already be in $J_CLAUDE_TELEGRAM_HOME/bot.env (see the j-claude-telegram:setup skill),
-# or be given once as TELEGRAM_BOT_TOKEN in the environment.
+# The token must already be in $J_TELEGRAM_BRIDGE_HOME/bot.env (see the j-telegram-bridge:setup skill).
 set -euo pipefail
 
-NAME=j-claude-telegram
+NAME=j-telegram-bridge
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../bot" && pwd)"
-STATE="${J_CLAUDE_TELEGRAM_HOME:-$HOME/.claude/channels/j-claude-telegram}"
+STATE="${J_TELEGRAM_BRIDGE_HOME:-$HOME/.claude/channels/j-telegram-bridge}"
 
 say() { printf '%s\n' "$*"; }
 die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
@@ -33,17 +32,14 @@ fi
 
 # --- token ---------------------------------------------------------------------------------
 mkdir -p -m 700 "$STATE"
-if [[ ! -s "$STATE/bot.env" ]]; then
-  [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]] || die "No token. Put TELEGRAM_BOT_TOKEN=... in $STATE/bot.env first."
-  ( umask 077; printf 'TELEGRAM_BOT_TOKEN=%s\n' "$TELEGRAM_BOT_TOKEN" > "$STATE/bot.env" )
-fi
+[[ -s "$STATE/bot.env" ]] || die "No token. Put TELEGRAM_BOT_TOKEN=... in $STATE/bot.env first (see README)."
 chmod 600 "$STATE/bot.env"
 
 # --- code ----------------------------------------------------------------------------------
 if $in_place; then
   APP="$SRC"
 else
-  APP="${J_CLAUDE_TELEGRAM_APP:-$HOME/.local/share/j-claude-telegram}"
+  APP="${J_TELEGRAM_BRIDGE_APP:-$HOME/.local/share/j-telegram-bridge}"
   mkdir -p "$APP"
   # copy the bot (no node_modules, no tests), keep nothing else there
   ( cd "$SRC" && tar --exclude=node_modules --exclude=tests -cf - . ) | ( cd "$APP" && tar -xf - )
@@ -67,11 +63,11 @@ fi
 mkdir -p "$BIN_DIR" "$UNIT_DIR"
 PATH_LINE="$(dirname "$CLAUDE"):$(dirname "$BUN"):/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-# command: j-claude-telegram notify|allow
+# command: j-telegram-bridge notify|allow
 cat > "$BIN_DIR/$NAME" <<SH
 #!/bin/sh
 # always the bot's own private folder, whoever runs this
-J_CLAUDE_TELEGRAM_HOME="$STATE" export J_CLAUDE_TELEGRAM_HOME
+J_TELEGRAM_BRIDGE_HOME="$STATE" export J_TELEGRAM_BRIDGE_HOME
 cd "$APP" && exec "$BUN" cli.ts "\$@"
 SH
 chmod 755 "$BIN_DIR/$NAME"
@@ -89,7 +85,7 @@ chmod 755 "$BIN_DIR/$NAME-check"
 
 cat > "$UNIT_DIR/$NAME.service" <<UNIT
 [Unit]
-Description=J Claude Telegram: Claude Code in Telegram topics (each topic is its own Claude conversation)
+Description=J Telegram Bridge: Claude Code in Telegram topics (each topic is its own Claude conversation)
 After=network-online.target
 Wants=network-online.target
 
@@ -98,7 +94,7 @@ Type=simple
 WorkingDirectory=$APP
 Environment=HOME=$HOME
 Environment=PATH=$PATH_LINE
-Environment=J_CLAUDE_TELEGRAM_HOME=$STATE
+Environment=J_TELEGRAM_BRIDGE_HOME=$STATE
 ExecStart=$BUN bot.ts
 Restart=always
 RestartSec=5
@@ -140,4 +136,4 @@ say "Installed. The bot runs from $APP as a ${SCTL[1]:+user }service ($NAME)."
 if [[ $EUID -ne 0 ]] && ! loginctl show-user "$USER" -p Linger 2>/dev/null | grep -q yes; then
   say "To keep it running after you log out (and start at boot): sudo loginctl enable-linger $USER"
 fi
-say "Next: message your bot in Telegram, then run: j-claude-telegram allow <code>"
+say "Next: message your bot in Telegram, then run: j-telegram-bridge allow <code>"
